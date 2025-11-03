@@ -14,7 +14,7 @@ def main(args):
 
     with open(args.conf, 'r') as conf_file:
         conf = yaml.safe_load(conf_file)
-    couch = lutils.setupServer(conf)
+    couch = lutils.load_couch_server(conf)
 
     with open(args.oconf, 'r') as ocf:
         oconf = yaml.safe_load(ocf)['order_portal']

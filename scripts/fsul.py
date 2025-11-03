@@ -18,7 +18,7 @@ def main(args):
 
     with open(args.conf) as conf_file:
         conf = yaml.safe_load(conf_file)
-    couch = lutils.setupServer(conf)
+    couch = lutils.load_couch_server(conf)
 
     mainlog = get_logger('fsullogger')
     db_session = get_session()
