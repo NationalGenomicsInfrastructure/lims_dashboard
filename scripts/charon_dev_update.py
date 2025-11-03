@@ -1,4 +1,5 @@
 from ibmcloudant import CouchDbSessionAuthenticator, cloudant_v1
+from ibm_cloud_sdk_core.api_exception import ApiException
 import yaml
 import argparse
 import os
@@ -8,15 +9,19 @@ def main(args):
     with open(args.conf, 'r') as conf_f:
         conf = yaml.load(conf_f, Loader=yaml.SafeLoader)
 
+    db_conf = conf["statusdb"]
     cloudant_auth = CouchDbSessionAuthenticator(
         db_conf["username"], db_conf["password"]
     )
-    db_conf = conf["statusdb"]
     statusdb = cloudant_v1.CloudantV1(authenticator=cloudant_auth)
-    statusdb.set_service_url(db_conf["url"])
+    statusdb.set_service_url(f"https://{db_conf['url']}")
+
     db_conf = conf["statusdbdev"]
-    statusdb_dev = cloudant_v1.CloudantV1(authenticator=cloudant_auth)
-    statusdb_dev.set_service_url(db_conf["url"])
+    cloudant_auth_dev = CouchDbSessionAuthenticator(
+        db_conf["username"], db_conf["password"]
+    )
+    statusdb_dev = cloudant_v1.CloudantV1(authenticator=cloudant_auth_dev)
+    statusdb_dev.set_service_url(f"https://{db_conf['url']}")
     ids = []
 
     if "_" in args.project:
@@ -40,8 +45,8 @@ def main(args):
         db="charon",
         ddoc="sample",
         view="sampleid",
-        startkey=[pid, "A"],
-        endkey=[pid, "ZZ"]
+        start_key=[pid, "A"],
+        end_key=[pid, "ZZ"]
         ).get_result()["rows"]
     for row in sample_docids:
         ids.append(row["id"])
@@ -49,8 +54,8 @@ def main(args):
         db="charon",
         ddoc="libprep",
         view="libprepid",
-        startkey=[pid, "A", "A"],
-        endkey=[pid, "ZZ", "ZZ"]
+        start_key=[pid, "A", "A"],
+        end_key=[pid, "ZZ", "ZZ"]
         ).get_result()["rows"]
     for row in prep_docids:
         ids.append(row["id"])
@@ -58,16 +63,17 @@ def main(args):
         db="charon",
         ddoc="seqrun",
         view="seqrunid",
-        startkey=[pid, "A", "A", "A"],
-        endkey=[pid, "ZZ", "ZZ", "ZZ"]
+        start_key=[pid, "A", "A", "A"],
+        end_key=[pid, "ZZ", "ZZ", "ZZ"]
         ).get_result()["rows"]
     for row in seqrundoc_ids:
         ids.append(row["id"])
 
     for i in ids:
         doc = statusdb.get_document(db="charon", doc_id=i).get_result()
-        docd = statusdb_dev.get_document(db="charon", doc_id=i).get_result()
-        if not docd:
+        try:
+            docd = statusdb_dev.get_document(db="charon", doc_id=i).get_result()
+        except ApiException:
             docd = {}
             for key in list(doc.keys()):
                 if key != '_rev':
